@@ -56,6 +56,23 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     } catch (error) {
       console.error(`Fehler bei Autocomplete /${interaction.commandName}:`, error);
     }
+    return;
+  }
+
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'announce_modal' && interaction.guildId) {
+      try {
+        await adminCommand.handleAnnounceSubmit(interaction, interaction.guildId);
+      } catch (error) {
+        console.error('Fehler bei announce_modal:', error);
+        const msg = { content: '❌ Es ist ein interner Fehler aufgetreten.', ephemeral: true };
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(msg).catch(() => null);
+        } else {
+          await interaction.reply(msg).catch(() => null);
+        }
+      }
+    }
   }
 });
 

@@ -2,7 +2,12 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   AutocompleteInteraction,
+  ModalSubmitInteraction,
   EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
   GuildMember,
   TextChannel,
 } from 'discord.js';
@@ -148,7 +153,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (sub === 'char-edit')     return handleEdit(interaction, guildId, member);
   if (sub === 'char-remove')   return handleRemove(interaction, guildId, member);
   if (sub === 'remove-player') return handleRemovePlayer(interaction, guildId, member);
-  if (sub === 'announce')      return handleAnnounce(interaction, guildId);
+  if (sub === 'announce')      return handleAnnounce(interaction);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -441,8 +446,41 @@ async function handleRemovePlayer(
   );
 }
 
+const DEFAULT_ANNOUNCE_TEXT =
+`Bitte trag deine WoW-Chars in den Roster ein, damit wir einen aktuellen Überblick über alle verfügbaren Chars haben.
+
+**Char hinzufügen:** \`/char add\` — Klasse, Name, Server und Item Level angeben. Du kannst mehrere Chars eintragen (Main + Alts).
+
+**Char aktualisieren:** \`/char edit\` — Wähle einen Char aus und ändere nur die gewünschten Felder (z.B. neues ilvl).
+
+**Char löschen:** \`/char remove\` — Wähle einen Char aus der Liste.
+
+**Deine Chars anzeigen:** \`/char list\`
+
+Alle Commands funktionieren nur in diesem Channel. Bitte halte dein ilvl aktuell.`;
+
 async function handleAnnounce(
   interaction: ChatInputCommandInteraction,
+): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId('announce_modal')
+    .setTitle('Ankündigung an alle Player-Channels');
+
+  const textInput = new TextInputBuilder()
+    .setCustomId('announce_text')
+    .setLabel('Nachricht (unterstützt Discord-Markdown)')
+    .setStyle(TextInputStyle.Paragraph)
+    .setValue(DEFAULT_ANNOUNCE_TEXT)
+    .setMaxLength(3000)
+    .setRequired(true);
+
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(textInput));
+
+  await interaction.showModal(modal);
+}
+
+export async function handleAnnounceSubmit(
+  interaction: ModalSubmitInteraction,
   guildId: string,
 ): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
@@ -454,35 +492,7 @@ async function handleAnnounce(
     return;
   }
 
-  const announceEmbed = new EmbedBuilder()
-    .setColor(0xc69b3a)
-    .setTitle('Roster — Chars eintragen')
-    .setDescription(
-      'Bitte trag deine WoW-Chars in den Roster ein, damit wir einen aktuellen Überblick über alle verfügbaren Chars haben.'
-    )
-    .addFields(
-      {
-        name: 'Char hinzufügen',
-        value: '`/char add` — Klasse, Name, Server und Item Level angeben\nDu kannst mehrere Chars eintragen (Main + Alts).',
-      },
-      {
-        name: 'Char aktualisieren',
-        value: '`/char edit` — Wähle einen Char aus und ändere nur die gewünschten Felder (z.B. neues ilvl).',
-      },
-      {
-        name: 'Char löschen',
-        value: '`/char remove` — Wähle einen Char aus der Liste aus.',
-      },
-      {
-        name: 'Deine Chars anzeigen',
-        value: '`/char list` — Zeigt alle deine eingetragenen Chars.',
-      },
-      {
-        name: 'Hinweis',
-        value: 'Alle Commands funktionieren nur in diesem Channel.\nBitte halte dein Item Level aktuell.',
-      },
-    )
-    .setTimestamp();
+  const text = interaction.fields.getTextInputValue('announce_text').trim();
 
   let sent = 0;
   let failed = 0;
@@ -491,7 +501,7 @@ async function handleAnnounce(
     try {
       const channel = await interaction.client.channels.fetch(entry.channel_id);
       if (channel instanceof TextChannel) {
-        await channel.send({ embeds: [announceEmbed] });
+        await channel.send({ content: text });
         sent++;
       } else {
         failed++;
