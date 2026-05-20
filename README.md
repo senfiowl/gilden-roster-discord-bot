@@ -74,7 +74,7 @@ Dieser Schritt muss für jeden Raider und Trial wiederholt werden. Mit `/setup o
 ```
 /admin announce
 ```
-Sendet automatisch eine Anleitung an alle registrierten Player-Channels.
+Öffnet ein Popup mit vorausgefülltem Text, der vor dem Senden bearbeitet werden kann. Sendet die Nachricht dann an alle registrierten Player-Channels.
 
 ---
 
@@ -101,7 +101,7 @@ Alle Commands nur im eigenen Player-Channel verfügbar.
 | `/admin char-edit` | Char eines Spielers bearbeiten |
 | `/admin char-remove` | Char eines Spielers löschen |
 | `/admin remove-player` | Alle Chars eines Spielers löschen (z.B. bei Gildenaustritt) |
-| `/admin announce` | Char-Eintrage-Aufforderung an alle Player-Channels senden |
+| `/admin announce` | Editable Modal öffnet sich — Text anpassen und an alle Player-Channels senden |
 | `/setup player-channel` | Player-Channel mit Spieler verknüpfen |
 | `/setup log-channel` | Log-Channel festlegen |
 | `/setup overview` | Setup-Status aller Council/Raidmember/Trial anzeigen |

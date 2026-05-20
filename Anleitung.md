@@ -94,13 +94,13 @@ Optional nach Klasse filtern:
 
 ## Ankündigung senden
 
-Mit `/admin announce` schickt der Bot automatisch eine Nachricht mit Anleitung in alle registrierten Player-Channels und fordert die Spieler auf, ihre Chars einzutragen.
+Mit `/admin announce` öffnet sich ein Popup-Fenster mit einem vorausgefüllten Nachrichtentext. Dort kannst du den Text nach Bedarf anpassen und dann auf **Absenden** klicken. Der Bot schickt die Nachricht anschließend automatisch an alle registrierten Player-Channels.
 
 ```
 /admin announce
 ```
 
-Nach dem Ausführen zeigt der Bot wie viele Channels erfolgreich erreicht wurden.
+Nach dem Absenden zeigt der Bot, wie viele Channels erfolgreich erreicht wurden.
 
 ---
 
