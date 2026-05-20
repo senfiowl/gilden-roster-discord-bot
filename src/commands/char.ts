@@ -13,10 +13,9 @@ import {
   deleteCharacter,
   getUserCharacters,
   getCharacterById,
-  getPlayerChannel,
   getLogChannel,
 } from '../database/db';
-import { isManagement, hasAnyGuildRole } from '../utils/permissions';
+import { hasAnyGuildRole } from '../utils/permissions';
 
 export const data = new SlashCommandBuilder()
   .setName('char')
@@ -117,17 +116,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  if (!isManagement(member)) {
-    const playerChannel = getPlayerChannel(userId, guildId);
-    if (!playerChannel || playerChannel.channel_id !== interaction.channelId) {
-      await interaction.reply({
-        content: '❌ Bitte nutze diesen Command in deinem eigenen Player-Channel.',
-        ephemeral: true,
-      });
-      return;
-    }
-  }
-
   const sub = interaction.options.getSubcommand();
   if (sub === 'add')    return handleAdd(interaction, userId, guildId);
   if (sub === 'edit')   return handleEdit(interaction, userId, guildId);
@@ -190,7 +178,7 @@ async function handleAdd(
     )
     .setTimestamp();
 
-  await interaction.reply({ embeds: [embed] });
+  await interaction.reply({ embeds: [embed], ephemeral: true });
   await sendLog(interaction, guildId, new EmbedBuilder()
     .setColor(wowClass.color)
     .setTitle('📥 Char eingetragen')
@@ -267,7 +255,7 @@ async function handleEdit(
   if (className !== existing.class_name) logChanges.push(`Klasse: ${existing.class_name} -> ${className}`);
   if (ilvl      !== existing.ilvl)       logChanges.push(`ilvl: ${existing.ilvl} -> ${ilvl}`);
 
-  await interaction.reply({ embeds: [embed] });
+  await interaction.reply({ embeds: [embed], ephemeral: true });
   await sendLog(interaction, guildId, new EmbedBuilder()
     .setColor(wowClass.color)
     .setTitle('✏️ Char aktualisiert')
@@ -297,7 +285,7 @@ async function handleRemove(
 
   deleteCharacter(charId, userId, guildId);
 
-  await interaction.reply({ content: `**${existing.char_name}-${existing.server}** wurde gelöscht.` });
+  await interaction.reply({ content: `**${existing.char_name}-${existing.server}** wurde gelöscht.`, ephemeral: true });
 
   await sendLog(interaction, guildId, new EmbedBuilder()
     .setColor(0xff4444)
