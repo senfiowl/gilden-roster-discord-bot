@@ -2,19 +2,21 @@
 
 ## Testen
 
-- [ ] Mit Raidmember-only Rolle testen (Berechtigungen, Player-Channel Einschränkung)
-- [ ] Mit Trial-only Rolle testen
-- [ ] Council-Rolle testen (Admin-Commands verfügbar?)
+- [X] Mit Raidmember-only Rolle testen (Berechtigungen, Player-Channel Einschränkung)
+- [X] Mit Trial-only Rolle testen
+- [X] Council-Rolle testen (Admin-Commands verfügbar?)
 - [X] Log-Channel Benachrichtigungen prüfen (add / edit / remove)
 - [X] Player-Channel Benachrichtigung bei Admin-Commands prüfen
 - [X] Autocomplete bei `/char edit` und `/char remove` testen
 - [X] `/setup overview` mit mehreren Mitgliedern testen
-- [ ] Verhalten testen wenn kein Player-Channel registriert ist
+- [X] Verhalten testen wenn kein Player-Channel registriert ist
 
 ## Features
 
 - [X] `/admin remove-player` — alle Chars eines Spielers auf einmal löschen (z.B. bei Gildenaustritt)
 - [ ] Google Sheets Export (optional, war früh erwähnt)
+- [ ] Optional auto-sync feature für google sheets
+- [ ] Abmeldungen - inkl. Möglichkeit die Abmeldungen für bestimmte Tage zu sehen
 
 ## Bekannte Einschränkungen
 

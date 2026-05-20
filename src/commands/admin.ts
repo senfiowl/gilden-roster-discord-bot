@@ -24,6 +24,7 @@ import {
   getAllPlayerChannels,
 } from '../database/db';
 import { isManagement } from '../utils/permissions';
+import { exportRosterToSheets } from '../sheets/sheets';
 
 export const data = new SlashCommandBuilder()
   .setName('admin')
@@ -106,7 +107,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(true)))
   .addSubcommand(sub => sub
     .setName('announce')
-    .setDescription('Nachricht mit Char-Eintrage-Aufforderung an alle Player-Channels schicken'));
+    .setDescription('Nachricht mit Char-Eintrage-Aufforderung an alle Player-Channels schicken'))
+  .addSubcommand(sub => sub
+    .setName('export')
+    .setDescription('Roster in Google Sheets exportieren'));
 
 export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused(true);
@@ -154,6 +158,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (sub === 'char-remove')   return handleRemove(interaction, guildId, member);
   if (sub === 'remove-player') return handleRemovePlayer(interaction, guildId, member);
   if (sub === 'announce')      return handleAnnounce(interaction);
+  if (sub === 'export')        return handleExport(interaction, guildId);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -444,6 +449,52 @@ async function handleRemovePlayer(
     .addFields({ name: `${chars.length} gelöschte Chars`, value: charList })
     .setTimestamp()
   );
+}
+
+async function handleExport(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+
+  const channels = getAllPlayerChannels(guildId);
+  if (channels.length === 0) {
+    await interaction.editReply('❌ Keine Player-Channels registriert.');
+    return;
+  }
+
+  const guild = interaction.guild!;
+  const players: Awaited<Parameters<typeof exportRosterToSheets>[0]> = [];
+
+  for (const entry of channels) {
+    let displayName = entry.user_id;
+    try {
+      const member = await guild.members.fetch(entry.user_id);
+      displayName = member.displayName;
+    } catch {
+      // Mitglied hat den Server verlassen — user_id als Fallback
+    }
+
+    const chars = getUserCharacters(entry.user_id, guildId);
+    players.push({
+      displayName,
+      chars: chars.map(c => ({
+        name:      c.char_name,
+        server:    c.server,
+        className: c.class_name,
+        ilvl:      c.ilvl,
+      })),
+    });
+  }
+
+  try {
+    await exportRosterToSheets(players);
+  } catch (err: any) {
+    await interaction.editReply(`❌ Export fehlgeschlagen: ${err.message}`);
+    return;
+  }
+
+  await interaction.editReply(`✅ Google Sheets aktualisiert — ${players.length} Spieler exportiert.`);
 }
 
 const DEFAULT_ANNOUNCE_TEXT =

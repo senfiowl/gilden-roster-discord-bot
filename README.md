@@ -102,6 +102,7 @@ Alle Commands nur im eigenen Player-Channel verfügbar.
 | `/admin char-remove` | Char eines Spielers löschen |
 | `/admin remove-player` | Alle Chars eines Spielers löschen (z.B. bei Gildenaustritt) |
 | `/admin announce` | Editable Modal öffnet sich — Text anpassen und an alle Player-Channels senden |
+| `/admin export` | Roster in Google Sheets exportieren |
 | `/setup player-channel` | Player-Channel mit Spieler verknüpfen |
 | `/setup log-channel` | Log-Channel festlegen |
 | `/setup overview` | Setup-Status aller Council/Raidmember/Trial anzeigen |
@@ -130,6 +131,40 @@ Die Rollennamen in `.env` müssen exakt mit den Rollennamen in Discord übereins
 |---|---|
 | Admin, Council | Alle Commands |
 | Raidmember, Trial | `/char`-Commands im eigenen Player-Channel |
+
+---
+
+## Google Sheets Export (optional)
+
+Mit `/admin export` wird der aktuelle Roster in ein Google Sheet geschrieben. Einmalige Einrichtung:
+
+### 1. Google Cloud Service Account anlegen
+
+1. [Google Cloud Console](https://console.cloud.google.com/) öffnen → neues Projekt anlegen (oder bestehendes wählen)
+2. **APIs & Dienste → Bibliothek** → „Google Sheets API" suchen und aktivieren
+3. **APIs & Dienste → Anmeldedaten** → „Anmeldedaten erstellen" → „Dienstkonto"
+4. Dienstkonto einen Namen geben → erstellen
+5. Auf das erstellte Dienstkonto klicken → **Schlüssel** → „Schlüssel hinzufügen" → JSON → Datei wird heruntergeladen
+
+### 2. Sheet freigeben
+
+Das Google Sheet mit der **E-Mail-Adresse des Dienstkontos** teilen (mit Bearbeitungsrechten).  
+Die E-Mail steht in der heruntergeladenen JSON-Datei unter `client_email`, z.B. `roster-bot@mein-projekt.iam.gserviceaccount.com`.
+
+### 3. .env konfigurieren
+
+```
+# Pfad zur JSON-Datei (relativ zum Projektverzeichnis)
+GOOGLE_SERVICE_ACCOUNT_PATH=service-account-key.json
+
+# Sheet-ID aus der URL: https://docs.google.com/spreadsheets/d/<ID>/edit
+GOOGLE_SHEET_ID=deine_sheet_id
+
+# Optional: Name des Tab im Sheet (Standard: erster Tab)
+# GOOGLE_SHEET_TAB=Roster
+```
+
+> Alternativ zu `GOOGLE_SERVICE_ACCOUNT_PATH` kann der JSON-Inhalt direkt als String in `GOOGLE_SERVICE_ACCOUNT_JSON` gesetzt werden — praktisch für Server-Deployments ohne Dateiablage.
 
 ---
 
