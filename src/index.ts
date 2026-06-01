@@ -1,9 +1,10 @@
 import { Client, Collection, Events, GatewayIntentBits, Interaction } from 'discord.js';
 import * as dotenv from 'dotenv';
-import * as charCommand   from './commands/char';
-import * as rosterCommand from './commands/roster';
-import * as setupCommand  from './commands/setup';
-import * as adminCommand  from './commands/admin';
+import * as charCommand    from './commands/char';
+import * as rosterCommand  from './commands/roster';
+import * as setupCommand   from './commands/setup';
+import * as adminCommand   from './commands/admin';
+import * as absenceCommand from './commands/absence';
 
 dotenv.config();
 
@@ -17,10 +18,11 @@ interface BotCommand {
 import type { ChatInputCommandInteraction, AutocompleteInteraction } from 'discord.js';
 
 const commands = new Collection<string, BotCommand>();
-commands.set('char',   charCommand);
-commands.set('roster', rosterCommand);
-commands.set('setup',  setupCommand);
-commands.set('admin',  adminCommand);
+commands.set('char',    charCommand);
+commands.set('roster',  rosterCommand);
+commands.set('setup',   setupCommand);
+commands.set('admin',   adminCommand);
+commands.set('absence', absenceCommand);
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
@@ -60,11 +62,16 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   }
 
   if (interaction.isModalSubmit()) {
-    if (interaction.customId === 'announce_modal' && interaction.guildId) {
+    const handler =
+      interaction.customId === 'announce_modal'     ? () => adminCommand.handleAnnounceSubmit(interaction, interaction.guildId!)  :
+      interaction.customId === 'absence_add_modal'  ? () => absenceCommand.handleAbsenceAddSubmit(interaction, interaction.guildId!) :
+      null;
+
+    if (handler && interaction.guildId) {
       try {
-        await adminCommand.handleAnnounceSubmit(interaction, interaction.guildId);
+        await handler();
       } catch (error) {
-        console.error('Fehler bei announce_modal:', error);
+        console.error(`Fehler bei Modal ${interaction.customId}:`, error);
         const msg = { content: '❌ Es ist ein interner Fehler aufgetreten.', ephemeral: true };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(msg).catch(() => null);

@@ -1,9 +1,10 @@
 import { REST, Routes } from 'discord.js';
 import * as dotenv from 'dotenv';
-import * as charCommand   from './commands/char';
-import * as rosterCommand from './commands/roster';
-import * as setupCommand  from './commands/setup';
-import * as adminCommand  from './commands/admin';
+import * as charCommand    from './commands/char';
+import * as rosterCommand  from './commands/roster';
+import * as setupCommand   from './commands/setup';
+import * as adminCommand   from './commands/admin';
+import * as absenceCommand from './commands/absence';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ const commands = [
   rosterCommand.data.toJSON(),
   setupCommand.data.toJSON(),
   adminCommand.data.toJSON(),
+  absenceCommand.data.toJSON(),
 ];
 
 const rest = new REST().setToken(DISCORD_TOKEN);

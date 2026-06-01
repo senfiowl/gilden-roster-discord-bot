@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
-import type { Character, PlayerChannel } from '../types/index';
+import type { Character, PlayerChannel, Absence } from '../types/index';
 
 const PROD_PATH = path.join(process.cwd(), 'data', 'roster.db');
 
@@ -38,6 +38,25 @@ export function initDb(dbPath: string = PROD_PATH): void {
     CREATE TABLE IF NOT EXISTS guild_settings (
       guild_id        TEXT PRIMARY KEY,
       log_channel_id  TEXT
+    );
+  `);
+
+  // Migration: add absence_channel_id if it doesn't exist yet
+  try {
+    _db.exec(`ALTER TABLE guild_settings ADD COLUMN absence_channel_id TEXT`);
+  } catch {
+    // Column already exists
+  }
+
+  _db.exec(`
+
+    CREATE TABLE IF NOT EXISTS absences (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    TEXT NOT NULL,
+      guild_id   TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date   TEXT NOT NULL,
+      reason     TEXT
     );
   `);
 }
@@ -127,4 +146,65 @@ export function getLogChannel(guildId: string): string | undefined {
     | { log_channel_id: string }
     | undefined;
   return row?.log_channel_id;
+}
+
+export function setAbsenceChannel(guildId: string, channelId: string) {
+  return getDb().prepare(`
+    INSERT INTO guild_settings (guild_id, absence_channel_id) VALUES (?, ?)
+    ON CONFLICT(guild_id) DO UPDATE SET absence_channel_id = excluded.absence_channel_id
+  `).run(guildId, channelId);
+}
+
+export function getAbsenceChannel(guildId: string): string | undefined {
+  const row = getDb().prepare(`SELECT absence_channel_id FROM guild_settings WHERE guild_id = ?`).get(guildId) as
+    | { absence_channel_id: string }
+    | undefined;
+  return row?.absence_channel_id;
+}
+
+// ── Absences ──────────────────────────────────────────────────────────────────
+
+export function addAbsence(
+  userId: string, guildId: string,
+  startDate: string, endDate: string, reason: string | null,
+) {
+  return getDb().prepare(`
+    INSERT INTO absences (user_id, guild_id, start_date, end_date, reason)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(userId, guildId, startDate, endDate, reason);
+}
+
+export function getUserAbsences(userId: string, guildId: string): Absence[] {
+  return getDb().prepare(`
+    SELECT * FROM absences WHERE user_id = ? AND guild_id = ? ORDER BY start_date ASC
+  `).all(userId, guildId) as unknown as Absence[];
+}
+
+export function getAbsencesForWeek(guildId: string, weekStart: string, weekEnd: string): Absence[] {
+  return getDb().prepare(`
+    SELECT * FROM absences
+    WHERE guild_id = ? AND start_date <= ? AND end_date >= ?
+    ORDER BY start_date ASC
+  `).all(guildId, weekEnd, weekStart) as unknown as Absence[];
+}
+
+export function getUpcomingAbsences(guildId: string): Absence[] {
+  const today = new Date().toISOString().slice(0, 10);
+  return getDb().prepare(`
+    SELECT * FROM absences WHERE guild_id = ? AND end_date >= ? ORDER BY start_date ASC
+  `).all(guildId, today) as unknown as Absence[];
+}
+
+export function getAbsenceById(id: number): Absence | undefined {
+  return getDb().prepare(`SELECT * FROM absences WHERE id = ?`).get(id) as unknown as Absence | undefined;
+}
+
+export function deleteAbsence(id: number, userId: string, guildId: string) {
+  return getDb().prepare(`
+    DELETE FROM absences WHERE id = ? AND user_id = ? AND guild_id = ?
+  `).run(id, userId, guildId);
+}
+
+export function deleteAbsenceAdmin(id: number, guildId: string) {
+  return getDb().prepare(`DELETE FROM absences WHERE id = ? AND guild_id = ?`).run(id, guildId);
 }

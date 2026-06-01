@@ -5,7 +5,7 @@ import {
   ChannelType,
   EmbedBuilder,
 } from 'discord.js';
-import { setPlayerChannel, getPlayerChannel, setLogChannel, getLogChannel, getAllPlayerChannels } from '../database/db';
+import { setPlayerChannel, getPlayerChannel, setLogChannel, getLogChannel, getAllPlayerChannels, setAbsenceChannel, getAbsenceChannel } from '../database/db';
 import { isManagement } from '../utils/permissions';
 
 function relevantRoleNames(): string[] {
@@ -41,7 +41,15 @@ export const data = new SlashCommandBuilder()
       .setRequired(true)))
   .addSubcommand(sub => sub
     .setName('overview')
-    .setDescription('Zeige Setup-Status aller Mitglieder mit Council/Raidmember/Trial Rolle'));
+    .setDescription('Zeige Setup-Status aller Mitglieder mit Council/Raidmember/Trial Rolle'))
+  .addSubcommand(sub => sub
+    .setName('absence-channel')
+    .setDescription('Setze den Channel für öffentliche Abwesenheits-Benachrichtigungen')
+    .addChannelOption(opt => opt
+      .setName('channel')
+      .setDescription('In diesem Channel postet der Bot neue Abwesenheiten')
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)));
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   const member = interaction.member as GuildMember;
@@ -86,6 +94,21 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   if (sub === 'overview') {
     await handleOverview(interaction);
+  }
+
+  if (sub === 'absence-channel') {
+    const channel = interaction.options.getChannel('channel', true);
+    const guildId = interaction.guildId!;
+
+    const previous = getAbsenceChannel(guildId);
+    setAbsenceChannel(guildId, channel.id);
+
+    const updateNote = previous ? ` (vorher: <#${previous}>)` : '';
+
+    await interaction.reply({
+      content: `✅ Abwesenheits-Channel gesetzt: <#${channel.id}>${updateNote}`,
+      ephemeral: true,
+    });
   }
 }
 

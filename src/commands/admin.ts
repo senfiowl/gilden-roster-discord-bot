@@ -22,7 +22,12 @@ import {
   getPlayerChannel,
   getLogChannel,
   getAllPlayerChannels,
+  getUpcomingAbsences,
+  getUserAbsences,
+  getAbsenceById,
+  deleteAbsenceAdmin,
 } from '../database/db';
+import { formatDateDE } from '../utils/dates';
 import { isManagement } from '../utils/permissions';
 import { exportRosterToSheets } from '../sheets/sheets';
 
@@ -110,10 +115,25 @@ export const data = new SlashCommandBuilder()
     .setDescription('Nachricht mit Char-Eintrage-Aufforderung an alle Player-Channels schicken'))
   .addSubcommand(sub => sub
     .setName('export')
-    .setDescription('Roster in Google Sheets exportieren'));
+    .setDescription('Roster in Google Sheets exportieren'))
+  .addSubcommand(sub => sub
+    .setName('absence-list')
+    .setDescription('Alle bevorstehenden Abwesenheiten anzeigen')
+    .addUserOption(opt => opt
+      .setName('user')
+      .setDescription('Nur für diesen Spieler anzeigen')))
+  .addSubcommand(sub => sub
+    .setName('absence-remove')
+    .setDescription('Abwesenheit eines Spielers löschen')
+    .addStringOption(opt => opt
+      .setName('id')
+      .setDescription('Abwesenheit auswählen')
+      .setRequired(true)
+      .setAutocomplete(true)));
 
 export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused(true);
+  const sub = interaction.options.getSubcommand();
 
   if (focused.name === 'klasse') {
     const matches = WOW_CLASSES.filter(c =>
@@ -139,6 +159,28 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
         value: String(c.id),
       }))
     );
+    return;
+  }
+
+  if (focused.name === 'id' && sub === 'absence-remove' && interaction.guildId) {
+    const absences = getUpcomingAbsences(interaction.guildId);
+    const query = focused.value.toLowerCase();
+    const matches = absences.filter(a =>
+      formatDateDE(a.start_date).includes(query) ||
+      formatDateDE(a.end_date).includes(query) ||
+      (a.reason ?? '').toLowerCase().includes(query)
+    );
+    await interaction.respond(
+      matches.slice(0, 25).map(a => {
+        const member = interaction.guild?.members.cache.get(a.user_id);
+        const name = member?.displayName ?? a.user_id;
+        const dates = `${formatDateDE(a.start_date)} – ${formatDateDE(a.end_date)}`;
+        return {
+          name: `${name}: ${dates}${a.reason ? ` (${a.reason})` : ''}`,
+          value: String(a.id),
+        };
+      })
+    );
   }
 }
 
@@ -153,12 +195,14 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const guildId = interaction.guildId!;
   const sub = interaction.options.getSubcommand();
 
-  if (sub === 'char-add')      return handleAdd(interaction, guildId, member);
-  if (sub === 'char-edit')     return handleEdit(interaction, guildId, member);
-  if (sub === 'char-remove')   return handleRemove(interaction, guildId, member);
-  if (sub === 'remove-player') return handleRemovePlayer(interaction, guildId, member);
-  if (sub === 'announce')      return handleAnnounce(interaction);
-  if (sub === 'export')        return handleExport(interaction, guildId);
+  if (sub === 'char-add')        return handleAdd(interaction, guildId, member);
+  if (sub === 'char-edit')       return handleEdit(interaction, guildId, member);
+  if (sub === 'char-remove')     return handleRemove(interaction, guildId, member);
+  if (sub === 'remove-player')   return handleRemovePlayer(interaction, guildId, member);
+  if (sub === 'announce')        return handleAnnounce(interaction);
+  if (sub === 'export')          return handleExport(interaction, guildId);
+  if (sub === 'absence-list')    return handleAbsenceList(interaction, guildId);
+  if (sub === 'absence-remove')  return handleAbsenceRemove(interaction, guildId);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -495,6 +539,80 @@ async function handleExport(
   }
 
   await interaction.editReply(`✅ Google Sheets aktualisiert — ${players.length} Spieler exportiert.`);
+}
+
+async function handleAbsenceList(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+): Promise<void> {
+  const targetUser = interaction.options.getUser('user');
+
+  const absences = targetUser
+    ? getUserAbsences(targetUser.id, guildId)
+    : getUpcomingAbsences(guildId);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle(targetUser
+      ? `📋 Abwesenheiten von ${targetUser.username}`
+      : '📋 Alle bevorstehenden Abwesenheiten');
+
+  if (absences.length === 0) {
+    embed.setDescription('Keine Abwesenheiten gefunden.');
+  } else {
+    if (!targetUser) {
+      const userIds = [...new Set(absences.map(a => a.user_id))];
+      try { await interaction.guild?.members.fetch({ user: userIds }); } catch { /* ignore */ }
+    }
+
+    for (const abs of absences.slice(0, 25)) {
+      const dateRange = `${formatDateDE(abs.start_date)} – ${formatDateDE(abs.end_date)}`;
+      if (targetUser) {
+        embed.addFields({
+          name: dateRange,
+          value: abs.reason ?? '*Kein Grund*',
+        });
+      } else {
+        const member = interaction.guild?.members.cache.get(abs.user_id);
+        const name   = member?.displayName ?? abs.user_id;
+        embed.addFields({
+          name,
+          value: `${dateRange}${abs.reason ? `\n*${abs.reason}*` : ''}`,
+        });
+      }
+    }
+    if (absences.length > 25) {
+      embed.setFooter({ text: `+ ${absences.length - 25} weitere nicht angezeigt` });
+    }
+  }
+
+  embed.setTimestamp();
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleAbsenceRemove(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+): Promise<void> {
+  const id = parseInt(interaction.options.getString('id', true), 10);
+
+  if (isNaN(id)) {
+    await interaction.reply({ content: '❌ Ungültige Auswahl.', ephemeral: true });
+    return;
+  }
+
+  const absence = getAbsenceById(id);
+  if (!absence || absence.guild_id !== guildId) {
+    await interaction.reply({ content: '❌ Abwesenheit nicht gefunden.', ephemeral: true });
+    return;
+  }
+
+  deleteAbsenceAdmin(id, guildId);
+
+  await interaction.reply({
+    content: `✅ Abwesenheit von <@${absence.user_id}> (**${formatDateDE(absence.start_date)} – ${formatDateDE(absence.end_date)}**) wurde gelöscht.`,
+    ephemeral: true,
+  });
 }
 
 const DEFAULT_ANNOUNCE_TEXT =

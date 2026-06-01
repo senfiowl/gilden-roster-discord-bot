@@ -16,6 +16,15 @@ export interface PlayerChannel {
   channel_id: string;
 }
 
+export interface Absence {
+  id: number;
+  user_id: string;
+  guild_id: string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+}
+
 export interface WowClass {
   name: string;
   color: number;
