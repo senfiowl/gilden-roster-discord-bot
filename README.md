@@ -1,6 +1,6 @@
-# Roster Bot
+# Guild Bot
 
-Discord Bot zur Verwaltung des WoW-Gilden-Rosters.
+Discord Bot zur Verwaltung des WoW-Gilden-Rosters und Abwesenheiten.
 
 ---
 
@@ -51,7 +51,7 @@ npm run dev
 
 Im [Discord Developer Portal](https://discord.com/developers/applications) unter **Bot → Privileged Gateway Intents** muss aktiviert sein:
 
-- **Server Members Intent** — wird für `/setup overview` benötigt
+- **Server Members Intent** — wird für `/setup overview` und Namensauflösung in Abwesenheitslisten benötigt
 
 ---
 
@@ -59,22 +59,27 @@ Im [Discord Developer Portal](https://discord.com/developers/applications) unter
 
 Nach dem ersten Start müssen einmalig folgende Commands ausgeführt werden:
 
-**1. Log-Channel festlegen** (Channel in dem der Bot Änderungen protokolliert):
+**1. Log-Channel festlegen** (Channel für interne Char-Änderungen):
 ```
 /setup log-channel channel:#log-channel
 ```
 
-**2. Player-Channel für jeden Raider/Trial registrieren:**
+**2. Abwesenheits-Channel festlegen** (öffentlicher Channel für Abwesenheits-Benachrichtigungen):
+```
+/setup absence-channel channel:#abwesenheiten
+```
+
+**3. Player-Channel für jeden Raider/Trial registrieren:**
 ```
 /setup player-channel user:@Spieler channel:#spieler-channel
 ```
-Dieser Schritt muss für jeden Raider und Trial wiederholt werden. Mit `/setup overview` lässt sich jederzeit prüfen, wer noch keinen registrierten Channel hat.
+Dieser Schritt muss für jeden Raider und Trial wiederholt werden. Mit `/setup overview` lässt sich prüfen, wer noch keinen registrierten Channel hat.
 
-**3. Spieler zur Char-Eintragung auffordern:**
+**4. Spieler zur Char-Eintragung auffordern:**
 ```
 /admin announce
 ```
-Öffnet ein Popup mit vorausgefülltem Text, der vor dem Senden bearbeitet werden kann. Sendet die Nachricht dann an alle registrierten Player-Channels.
+Öffnet ein Popup mit vorausgefülltem Text — anpassen und an alle Player-Channels senden.
 
 ---
 
@@ -82,7 +87,7 @@ Dieser Schritt muss für jeden Raider und Trial wiederholt werden. Mit `/setup o
 
 ### Raidmember & Trial
 
-Alle Commands nur im eigenen Player-Channel verfügbar.
+Alle Commands funktionieren überall auf dem Server — Antworten sind nur für den Ausführenden sichtbar (ephemeral).
 
 | Command | Beschreibung |
 |---|---|
@@ -90,6 +95,10 @@ Alle Commands nur im eigenen Player-Channel verfügbar.
 | `/char edit` | Bestehenden Char bearbeiten |
 | `/char remove` | Char löschen |
 | `/char list` | Eigene Chars anzeigen |
+| `/absence add` | Abwesenheit eintragen (Modal mit Von/Bis und Grund) |
+| `/absence list` | Abwesenheiten der nächsten 7 Tage anzeigen |
+| `/absence mine` | Eigene Abwesenheiten anzeigen |
+| `/absence remove` | Eigene Abwesenheit löschen |
 
 ### Admin & Council
 
@@ -101,25 +110,30 @@ Alle Commands nur im eigenen Player-Channel verfügbar.
 | `/admin char-edit` | Char eines Spielers bearbeiten |
 | `/admin char-remove` | Char eines Spielers löschen |
 | `/admin remove-player` | Alle Chars eines Spielers löschen (z.B. bei Gildenaustritt) |
-| `/admin announce` | Editable Modal öffnet sich — Text anpassen und an alle Player-Channels senden |
+| `/admin announce` | Nachricht an alle Player-Channels senden (bearbeitbares Modal) |
 | `/admin export` | Roster in Google Sheets exportieren |
+| `/admin absence-list` | Alle bevorstehenden Abwesenheiten anzeigen |
+| `/admin absence-list user:@Spieler` | Abwesenheiten eines bestimmten Spielers anzeigen |
+| `/admin absence-remove` | Abwesenheit eines Spielers löschen |
 | `/setup player-channel` | Player-Channel mit Spieler verknüpfen |
 | `/setup log-channel` | Log-Channel festlegen |
+| `/setup absence-channel` | Abwesenheits-Channel festlegen |
 | `/setup overview` | Setup-Status aller Council/Raidmember/Trial anzeigen |
 
 ---
 
 ## Benachrichtigungen
 
-| Aktion | Player-Channel | Log-Channel |
-|---|---|---|
-| Spieler trägt Char ein | Öffentliche Bestätigung | Eintrag mit Spieler, Char, Klasse, ilvl |
-| Spieler bearbeitet Char | Öffentliche Bestätigung | Eintrag mit Änderungen |
-| Spieler löscht Char | Öffentliche Bestätigung | Eintrag |
-| Admin trägt Char ein | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk |
-| Admin bearbeitet Char | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk |
-| Admin löscht Char | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk |
-| Admin entfernt Spieler | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk |
+| Aktion | Player-Channel | Log-Channel | Absence-Channel |
+|---|---|---|---|
+| Spieler trägt Char ein | Bestätigung | Eintrag | — |
+| Spieler bearbeitet Char | Bestätigung | Eintrag mit Änderungen | — |
+| Spieler löscht Char | Bestätigung | Eintrag | — |
+| Admin trägt Char ein | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk | — |
+| Admin bearbeitet Char | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk | — |
+| Admin löscht Char | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk | — |
+| Admin entfernt Spieler | Benachrichtigung an Spieler | Eintrag mit Admin-Vermerk | — |
+| Spieler trägt Abwesenheit ein | — | — | Öffentliche Ankündigung |
 
 ---
 
@@ -130,7 +144,7 @@ Die Rollennamen in `.env` müssen exakt mit den Rollennamen in Discord übereins
 | Rolle | Zugriff |
 |---|---|
 | Admin, Council | Alle Commands |
-| Raidmember, Trial | `/char`-Commands im eigenen Player-Channel |
+| Raidmember, Trial | `/char`- und `/absence`-Commands |
 
 ---
 
@@ -170,4 +184,4 @@ GOOGLE_SHEET_ID=deine_sheet_id
 
 ## Datenbank
 
-Die SQLite-Datenbank wird automatisch beim ersten Start unter `data/roster.db` angelegt. Keine manuelle Einrichtung nötig.
+Die SQLite-Datenbank wird automatisch beim ersten Start unter `data/roster.db` angelegt. Keine manuelle Einrichtung nötig. Bestehende Datenbanken werden bei Updates automatisch migriert.
