@@ -221,8 +221,8 @@ async function sendToPlayerChannel(
     if (channel instanceof TextChannel) {
       await channel.send({ embeds: [embed] });
     }
-  } catch {
-    // Player-Channel nicht erreichbar
+  } catch (err) {
+    console.error('Player-Channel: Nachricht konnte nicht gesendet werden:', err);
   }
 }
 
@@ -239,8 +239,8 @@ async function sendToLogChannel(
     if (channel instanceof TextChannel) {
       await channel.send({ embeds: [embed] });
     }
-  } catch {
-    // Log-Channel nicht erreichbar
+  } catch (err) {
+    console.error('Log-Channel: Nachricht konnte nicht gesendet werden:', err);
   }
 }
 

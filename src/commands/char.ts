@@ -134,8 +134,8 @@ async function sendLog(interaction: ChatInputCommandInteraction, guildId: string
     if (channel instanceof TextChannel) {
       await channel.send({ embeds: [embed] });
     }
-  } catch {
-    // Log-Channel nicht erreichbar
+  } catch (err) {
+    console.error('Log-Channel: Nachricht konnte nicht gesendet werden:', err);
   }
 }
 

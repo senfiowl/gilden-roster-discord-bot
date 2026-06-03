@@ -37,6 +37,9 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const command = commands.get(interaction.commandName);
     if (!command) return;
     try {
+      const sub = interaction.options.getSubcommand(false);
+      const label = sub ? `/${interaction.commandName} ${sub}` : `/${interaction.commandName}`;
+      console.log(`[CMD] ${interaction.user.username} (${interaction.user.id}) ${label}`);
       await command.execute(interaction);
     } catch (error) {
       console.error(`Fehler bei /${interaction.commandName}:`, error);
@@ -69,6 +72,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     if (handler && interaction.guildId) {
       try {
+        console.log(`[MODAL] ${interaction.user.username} (${interaction.user.id}) ${interaction.customId}`);
         await handler();
       } catch (error) {
         console.error(`Fehler bei Modal ${interaction.customId}:`, error);

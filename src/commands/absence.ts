@@ -265,8 +265,8 @@ export async function handleAbsenceAddSubmit(
         notifyEmbed.setTimestamp();
         await channel.send({ embeds: [notifyEmbed] });
       }
-    } catch {
-      // Absence-Channel nicht erreichbar
+    } catch (err) {
+      console.error('Absence-Channel: Nachricht konnte nicht gesendet werden:', err);
     }
   }
 }

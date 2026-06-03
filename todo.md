@@ -14,9 +14,9 @@
 ## Features
 
 - [X] `/admin remove-player` — alle Chars eines Spielers auf einmal löschen (z.B. bei Gildenaustritt)
-- [ ] Google Sheets Export (optional, war früh erwähnt)
+- [X] Google Sheets Export (optional, war früh erwähnt)
 - [ ] Optional auto-sync feature für google sheets
-- [ ] Abmeldungen - inkl. Möglichkeit die Abmeldungen für bestimmte Tage zu sehen
+- [X] Abmeldungen - inkl. Möglichkeit die Abmeldungen für bestimmte Tage zu sehen
 
 ## Bekannte Einschränkungen
 
