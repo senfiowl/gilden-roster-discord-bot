@@ -26,8 +26,9 @@ import {
   getUserAbsences,
   getAbsenceById,
   deleteAbsenceAdmin,
+  addAbsence,
 } from '../database/db';
-import { formatDateDE } from '../utils/dates';
+import { formatDateDE, parseDateDE } from '../utils/dates';
 import { isManagement } from '../utils/permissions';
 import { exportRosterToSheets } from '../sheets/sheets';
 
@@ -123,6 +124,24 @@ export const data = new SlashCommandBuilder()
       .setName('user')
       .setDescription('Nur für diesen Spieler anzeigen')))
   .addSubcommand(sub => sub
+    .setName('absence-add')
+    .setDescription('Abwesenheit für einen Spieler eintragen')
+    .addUserOption(opt => opt
+      .setName('user')
+      .setDescription('Spieler')
+      .setRequired(true))
+    .addStringOption(opt => opt
+      .setName('von')
+      .setDescription('Startdatum (TT.MM.JJJJ)')
+      .setRequired(true))
+    .addStringOption(opt => opt
+      .setName('bis')
+      .setDescription('Enddatum (TT.MM.JJJJ) — leer lassen für nur 1 Tag'))
+    .addStringOption(opt => opt
+      .setName('grund')
+      .setDescription('Grund (optional)')
+      .setMaxLength(100)))
+  .addSubcommand(sub => sub
     .setName('absence-remove')
     .setDescription('Abwesenheit eines Spielers löschen')
     .addStringOption(opt => opt
@@ -201,6 +220,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (sub === 'remove-player')   return handleRemovePlayer(interaction, guildId, member);
   if (sub === 'announce')        return handleAnnounce(interaction);
   if (sub === 'export')          return handleExport(interaction, guildId);
+  if (sub === 'absence-add')     return handleAbsenceAdd(interaction, guildId, member);
   if (sub === 'absence-list')    return handleAbsenceList(interaction, guildId);
   if (sub === 'absence-remove')  return handleAbsenceRemove(interaction, guildId);
 }
@@ -539,6 +559,76 @@ async function handleExport(
   }
 
   await interaction.editReply(`✅ Google Sheets aktualisiert — ${players.length} Spieler exportiert.`);
+}
+
+async function handleAbsenceAdd(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+  admin: GuildMember,
+): Promise<void> {
+  const targetUser = interaction.options.getUser('user', true);
+  const vonRaw     = interaction.options.getString('von', true).trim();
+  const bisRawInput = (interaction.options.getString('bis') ?? '').trim();
+  const grund      = (interaction.options.getString('grund') ?? '').trim();
+
+  const vonISO = parseDateDE(vonRaw);
+  if (!vonISO) {
+    await interaction.reply({ content: '❌ Ungültiges Startdatum. Format: TT.MM.JJJJ (z.B. 15.06.2026)', ephemeral: true });
+    return;
+  }
+
+  const bisRaw = bisRawInput || vonRaw;
+  const bisISO = parseDateDE(bisRaw);
+  if (!bisISO) {
+    await interaction.reply({ content: '❌ Ungültiges Enddatum. Format: TT.MM.JJJJ (z.B. 20.06.2026)', ephemeral: true });
+    return;
+  }
+  if (bisISO < vonISO) {
+    await interaction.reply({ content: '❌ Das Enddatum muss nach dem Startdatum liegen.', ephemeral: true });
+    return;
+  }
+
+  addAbsence(targetUser.id, guildId, vonISO, bisISO, grund || null);
+
+  const dateRange = vonISO === bisISO
+    ? formatDateDE(vonISO)
+    : `${formatDateDE(vonISO)} – ${formatDateDE(bisISO)}`;
+
+  await interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setTitle('✅ Abwesenheit eingetragen')
+      .addFields(
+        { name: 'Spieler', value: `<@${targetUser.id}>`, inline: true },
+        { name: 'Zeitraum', value: dateRange, inline: true },
+        ...(grund ? [{ name: 'Grund', value: grund }] : []),
+      )
+      .setTimestamp()],
+    ephemeral: true,
+  });
+
+  const playerEmbed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('📅 Abwesenheit eingetragen')
+    .setDescription(`<@${admin.id}> hat eine Abwesenheit für dich eingetragen.`)
+    .addFields(
+      { name: 'Zeitraum', value: dateRange, inline: true },
+      ...(grund ? [{ name: 'Grund', value: grund }] : []),
+    )
+    .setTimestamp();
+
+  await sendToPlayerChannel(interaction, guildId, targetUser.id, playerEmbed);
+
+  await sendToLogChannel(interaction, guildId, new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('📅 Abwesenheit eingetragen (Admin)')
+    .setDescription(`<@${admin.id}> hat eine Abwesenheit für <@${targetUser.id}> eingetragen`)
+    .addFields(
+      { name: 'Zeitraum', value: dateRange, inline: true },
+      ...(grund ? [{ name: 'Grund', value: grund }] : []),
+    )
+    .setTimestamp()
+  );
 }
 
 async function handleAbsenceList(
