@@ -148,9 +148,16 @@ async function handleOverview(interaction: ChatInputCommandInteraction): Promise
   registered.sort();
   unregistered.sort();
 
+  const logChannelId     = getLogChannel(guildId);
+  const absenceChannelId = getAbsenceChannel(guildId);
+
   const embed = new EmbedBuilder()
     .setColor(0xc69b3a)
-    .setTitle('Setup-Übersicht — Player-Channels')
+    .setTitle('Setup-Übersicht')
+    .addFields(
+      { name: 'Log-Channel',       value: logChannelId     ? `<#${logChannelId}>`     : '❌ nicht gesetzt', inline: true },
+      { name: 'Abwesenheits-Channel', value: absenceChannelId ? `<#${absenceChannelId}>` : '❌ nicht gesetzt', inline: true },
+    )
     .setDescription(`**${relevant.size}** Mitglieder · **${registered.length}** registriert · **${unregistered.length}** fehlen`)
     .setTimestamp();
 
