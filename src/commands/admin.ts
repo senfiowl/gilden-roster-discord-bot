@@ -195,7 +195,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
         const name = member?.displayName ?? a.user_id;
         const dates = `${formatDateDE(a.start_date)} – ${formatDateDE(a.end_date)}`;
         return {
-          name: `${name}: ${dates}${a.reason ? ` (${a.reason})` : ''}`,
+          name: `${name}: ${dates}${a.reason ? ` (${a.reason})` : ''}`.slice(0, 100),
           value: String(a.id),
         };
       })

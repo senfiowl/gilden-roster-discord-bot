@@ -58,7 +58,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
 
   await interaction.respond(
     matches.slice(0, 25).map(a => ({
-      name: `${formatDateDE(a.start_date)} – ${formatDateDE(a.end_date)}${a.reason ? ` (${a.reason})` : ''}`,
+      name: `${formatDateDE(a.start_date)} – ${formatDateDE(a.end_date)}${a.reason ? ` (${a.reason})` : ''}`.slice(0, 100),
       value: String(a.id),
     }))
   );
