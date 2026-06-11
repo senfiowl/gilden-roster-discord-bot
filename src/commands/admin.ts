@@ -699,10 +699,24 @@ async function handleAbsenceRemove(
 
   deleteAbsenceAdmin(id, guildId);
 
+  const dateRange = `${formatDateDE(absence.start_date)} – ${formatDateDE(absence.end_date)}`;
+
   await interaction.reply({
-    content: `✅ Abwesenheit von <@${absence.user_id}> (**${formatDateDE(absence.start_date)} – ${formatDateDE(absence.end_date)}**) wurde gelöscht.`,
+    content: `✅ Abwesenheit von <@${absence.user_id}> (**${dateRange}**) wurde gelöscht.`,
     ephemeral: true,
   });
+
+  const admin = interaction.member as GuildMember;
+  await sendToPlayerChannel(interaction, guildId, absence.user_id, new EmbedBuilder()
+    .setColor(0xff4444)
+    .setTitle('📅 Abwesenheit gelöscht')
+    .setDescription(`<@${admin.id}> hat deine Abwesenheit entfernt.`)
+    .addFields(
+      { name: 'Zeitraum', value: dateRange, inline: true },
+      ...(absence.reason ? [{ name: 'Grund', value: absence.reason }] : []),
+    )
+    .setTimestamp()
+  );
 }
 
 const DEFAULT_ANNOUNCE_TEXT =
